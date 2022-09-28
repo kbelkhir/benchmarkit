@@ -1,5 +1,5 @@
 import time
-from collections import Iterable
+from collections.abc import Iterable
 from itertools import groupby
 from typing import Any, Callable, List, Literal, Tuple
 
