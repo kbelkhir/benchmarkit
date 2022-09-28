@@ -1,0 +1,5 @@
+pandas==1.4.4
+matplotlib==3.6.0
+tqdm==4.64.1
+multiprocess==0.70.13
+memory_profiler==0.60.0
