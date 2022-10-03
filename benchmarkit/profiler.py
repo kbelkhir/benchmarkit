@@ -1,7 +1,8 @@
 import time
+import statistics
 from collections.abc import Iterable
 from itertools import groupby
-from typing import Any, Callable, List, Literal, Tuple
+from typing import Any, Callable, Dict, List, Literal, Tuple
 
 import matplotlib.pyplot as plt
 import multiprocess
@@ -18,31 +19,46 @@ class ProfiledProcess(multiprocess.Process):
     """
 
     def __init__(
-        self, target, args=(), kwargs={}, name: str = None, proxy: BaseProxy = None
+        self,
+        target,
+        args=(),
+        kwargs={},
+        nb_runs: int = 3,
+        name: str = None,
+        proxy: BaseProxy = None,
     ):
         super().__init__(target=target, args=args, kwargs=kwargs, name=name)
         self._name = name if name else target.__name__
         self._proxy = proxy if proxy is not None else multiprocess.Manager().dict()
+        self._nb_runs = nb_runs
 
     def run(self):
         """
         Run the process and store the result in the proxy.
         """
 
-        result = memory_usage(
-            proc=(self._target, self._args, self._kwargs),
-            max_usage=False,
-            include_children=True,
-            multiprocess=True,
-            max_iterations=1,
-            timestamps=True,
+        runs_results = []
+
+        for _ in range(self._nb_runs):
+            start_time = time.time()
+            memory_result = memory_usage(
+                proc=(self._target, self._args, self._kwargs),
+                include_children=True,
+                multiprocess=True,
+                max_iterations=1,
+                max_usage=True,
+                timestamps=False,
+            )
+            end_time = time.time()
+
+            time_result = end_time - start_time
+
+            runs_results.append((time_result, memory_result))
+
+        self._proxy[self._name] = (
+            statistics.mean([t for t, _ in runs_results]),
+            statistics.mean([m for _, m in runs_results]),
         )
-
-        time_result = result[-1][1] - result[0][1]
-
-        memory_result = max([t for t, m in result])
-
-        self._proxy[self._name] = (time_result, memory_result)
 
     def result(self):
         return self._proxy.get(self._name)
@@ -78,7 +94,7 @@ class BenchmarkResults:
         },
     }
 
-    def __init__(self, results: dict):
+    def __init__(self, results: Dict):
         self._results = results
 
     def table(self) -> pandas.DataFrame:
@@ -179,8 +195,8 @@ class BenchmarKit:
     @staticmethod
     def run(
         func: Callable,
-        args=(),
-        kwargs={},
+        args: Tuple[Any] = (),
+        kwargs: Dict[str, Any] = {},
         proxy: BaseProxy = None,
         res_label: str = None,
         precision: int = None,
@@ -220,7 +236,7 @@ class BenchmarKit:
     def benchmark(
         funcs: List[Callable],
         args: List[Any],
-        labels=[],
+        labels: List[str] = [],
         precision: int = None,
     ):
         """

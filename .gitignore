@@ -7,5 +7,6 @@ __pycache__/
 env/
 .env
 
-# Jupyter Notebook
+# Jupyter Notebook & Examples
 .ipynb_checkpoints
+*.csv
